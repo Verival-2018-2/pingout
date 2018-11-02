@@ -2,7 +2,7 @@ from uuid import uuid4
 import json
 from .schemas import assert_valid_schema, get_pingout_schema, get_wrong_pingout_schema, \
                      create_file_ping, failure_create_file_ping
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys                     
                      
 
@@ -56,7 +56,9 @@ def test_export_range_csv(client):
     res = client.post('/create-pingout')
     post_data = json.loads(res.data)
     ping = client.post('/' + post_data['uuid'] + '/ping')
-    response = client.get('/' + post_data['uuid'] + '/filter?initial_date=2018-01-01&final_date=2018-12-12')
+    initial_date = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
+    final_date = datetime.today().strftime('%Y-%m-%d')
+    response = client.get('/' + post_data['uuid'] + '/filter?initial_date=' + initial_date + '&final_date=' + final_date)
     get_data = json.loads(response.data)
 
     assert response.status_code == 200
@@ -65,7 +67,9 @@ def test_export_range_csv(client):
 def test_failure_export_range_csv(client):
     res = client.post('/create-pingout')
     post_data = json.loads(res.data)
-    response = client.get('/' + post_data['uuid'] + '/filter?initial_date=2018-01-01&final_date=2018-12-12')
+    initial_date = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
+    final_date = datetime.today().strftime('%Y-%m-%d')
+    response = client.get('/' + post_data['uuid'] + '/filter?initial_date=' + initial_date + '&final_date=' + final_date)
     get_data = json.loads(response.data)
 
     assert response.status_code == 400
