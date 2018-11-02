@@ -1,5 +1,6 @@
 import datetime
 import pandas
+import sys
 
 
 def filter_pingout_all_pings(uuid, collection):
@@ -8,8 +9,7 @@ def filter_pingout_all_pings(uuid, collection):
     return pings
 
 
-# TODO: Refact this to filter on mongo
-def filter_pings_of_date(uuid, collection, date):
+def filter_pings_of_specific_date(uuid, collection, date):
     """ Filter all pings of a given date, which must be an
     instance of datetime """
 
@@ -18,9 +18,15 @@ def filter_pings_of_date(uuid, collection, date):
 
     pings = filter_pingout_all_pings(uuid, collection)
 
-    pings_data = [ping for ping in pings if ping['date'] == date]
+    pings_date = []
 
-    return pings_data
+    for ping in pings:
+        if ping['date'].date() == date.date():
+            ping['date'] = ping['date'].date()
+            pings_date.append(ping)
+    
+
+    return pings_date
 
 
 def filter_pings_range_of_dates(uuid, collection, initial, final):
@@ -51,6 +57,21 @@ def filter_occurrences_ping_range_date(uuid, collection, initial, final):
         raise ValueError('Invalid date type')
 
     pings = filter_pings_range_of_dates(uuid, collection, initial, final)
+    df = pandas.DataFrame(pings)
+    df['date'] = df['date'].astype(str)
+    df = df['date'].value_counts()
+
+    return df.to_dict()
+
+def filter_occurrences_ping_specific_date(uuid, collection, date):
+    """ Filter number of occurences of pings by each date
+    in the range given """
+
+    if not isinstance(date, datetime.datetime):
+
+        raise ValueError('Invalid date type')
+
+    pings = filter_pings_of_specific_date(uuid, collection, date)
     df = pandas.DataFrame(pings)
     df['date'] = df['date'].astype(str)
     df = df['date'].value_counts()
