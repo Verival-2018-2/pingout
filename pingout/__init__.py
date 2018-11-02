@@ -9,12 +9,14 @@ from flask import request
 from flask import send_from_directory
 from flask import url_for
 from dateutil import parser
+import sys
 
 from pingout.db import connect_to_database
 from pingout.db import connect_to_collection
 from pingout.utils import validate_uuid
 from pingout.utils import from_json_to_csv
-from pingout.filters import filter_occurrences_ping_range_date
+from pingout.filters import filter_occurrences_ping_range_date, filter_pings_of_specific_date,\
+                            filter_occurrences_ping_specific_date
 
 
 SECRET_KEY = os.environ.get('APP_SECRET_KEY', 'dev')
@@ -66,9 +68,14 @@ def create_app(test_config=None, db=connect_to_database()):
                     final = parser.parse(final)
                 except TypeError:
                     return Response(status=400)
-                query = filter_occurrences_ping_range_date(pingout_uuid,
-                                                           collection, initial,
-                                                           final)
+                try:
+                    query = filter_occurrences_ping_range_date(pingout_uuid,
+                                                            collection, initial,
+                                                            final)
+                except KeyError:
+                    response = jsonify(error="Pingout without pings received on this range of date!")
+                    response.status_code = 400
+                    return response
                 filename = '{}.csv'.format(pingout_uuid)
                 from_json_to_csv(query, filename)
                 url = url_for('download_file',
@@ -77,10 +84,41 @@ def create_app(test_config=None, db=connect_to_database()):
                 response = jsonify(message="File created with success!",
                                    url=url)
                 response.status_code = 200
-
                 return response
             else:
                 return Response(status=404)
+
+
+    @app.route("/<string:pingout_uuid>/filter_specific", methods=['GET'])
+    def get_pingouts_occur_specific_date(pingout_uuid):        
+        if validate_uuid(pingout_uuid):
+            pingout = collection.find_one({'uuid': pingout_uuid})
+            if pingout:
+                date = request.args.get('date')
+                try:
+                    date = parser.parse(date)
+                except TypeError:
+                    return Response(status=400)
+                try:
+                    query = filter_occurrences_ping_specific_date(pingout_uuid,
+                                                                collection, date)
+                except KeyError:
+                    response = jsonify(error="Pingout without pings received on this date!")
+                    response.status_code = 400
+                    return response
+                filename = '{}.csv'.format(pingout_uuid)
+                from_json_to_csv(query, filename)
+                url = url_for('download_file',
+                              pingout_uuid=pingout_uuid,
+                              filename=filename, _external=True)
+                response = jsonify(message="File created with success!",
+                                   url=url)
+                response.status_code = 200
+                
+                return response
+            else:
+                return Response(status=404)
+
 
     @app.route("/<string:pingout_uuid>/download/<path:filename>")
     def download_file(pingout_uuid, filename):
