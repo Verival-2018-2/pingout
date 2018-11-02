@@ -108,4 +108,18 @@ def test_create_file_by_export_specific_csv(client):
     expected = ",0\n" + date + ",1\n"
 
     assert expected == file.read()
-    
+
+def test_create_file_by_export_range_csv(client):
+    res = client.post('/create-pingout')
+    post_data = json.loads(res.data)
+    client.post('/' + post_data['uuid'] + '/ping')
+
+    initial_date = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
+    final_date = datetime.today().strftime('%Y-%m-%d')
+
+    client.get('/' + post_data['uuid'] + '/filter?initial_date=' + initial_date + '&final_date=' + final_date)
+
+    file = open('../app/files/' + post_data['uuid'] + '.csv' , 'r')
+    expected = ",0\n" + final_date + ",1\n"
+
+    assert expected == file.read()
